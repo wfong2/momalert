@@ -19,5 +19,6 @@
         
               <!-- Annotated entity classes -->
         <mapping class="com.edis.momalert.model.PCUser"/>
+        <mapping class="com.edis.momalert.model.Fitbit"/>
     </session-factory>
 </hibernate-configuration>

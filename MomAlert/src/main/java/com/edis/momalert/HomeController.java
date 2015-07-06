@@ -29,9 +29,13 @@ import com.fitbit.api.client.FitbitApiCredentialsCache;
 import com.fitbit.api.client.FitbitApiSubscriptionStorage;
 import com.fitbit.api.client.LocalUserDetail;
 import com.fitbit.api.client.service.FitbitAPIClientService;
+import com.fitbit.api.common.model.sleep.Sleep;
+import com.fitbit.api.common.service.FitbitApiService;
 import com.fitbit.api.model.APIResourceCredentials;
 import com.fitbit.api.model.ApiSubscription;
+import com.fitbit.api.model.FitbitUser;
 import com.fitbit.web.context.RequestContext;
+
 
 
 
@@ -43,6 +47,7 @@ import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.service.ServiceRegistry;
 import org.hibernate.service.ServiceRegistryBuilder;
+import org.joda.time.LocalDate;
 
 
 /**
@@ -154,6 +159,8 @@ public class HomeController implements InitializingBean{
 	        
 		 context.setOurUser(new LocalUserDetail(myForm.getName()));
 		 populate(context, request, response);
+		 
+		 request.getSession().setAttribute("user_name", myForm.getName());
 		 try {
 	            // Redirect to page where user can authorize the application:
 	            return "redirect:" + context.getApiClientService().getResourceOwnerAuthorizationURL(context.getOurUser(), getExampleBaseUrl() + "/completeAuthorization");
@@ -171,6 +178,8 @@ public class HomeController implements InitializingBean{
 	        String tempTokenReceived = request.getParameter(OAUTH_TOKEN);
 	        String tempTokenVerifier = request.getParameter(OAUTH_VERIFIER);
 	        APIResourceCredentials resourceCredentials = context.getApiClientService().getResourceCredentialsByTempToken(tempTokenReceived);
+	        
+	        String userName = (String) request.getSession().getAttribute("user_name");
 
 	        if (resourceCredentials == null) {
 	            logger.error("Unrecognized temporary token when attempting to complete authorization: " + tempTokenReceived);
@@ -180,9 +189,25 @@ public class HomeController implements InitializingBean{
 	            if (!resourceCredentials.isAuthorized()) {
 	                // The verifier is required in the request to get token credentials:
 	                resourceCredentials.setTempTokenVerifier(tempTokenVerifier);
+	                logger.info("has been authroized");
 	                try {
 	                    // Get token credentials for user:
-	                    context.getApiClientService().getTokenCredentials(new LocalUserDetail(resourceCredentials.getLocalUserId()));
+	                	
+	                	logger.info("user name is "+userName);
+	                	final LocalUserDetail localUser = new LocalUserDetail(userName);
+	                     context.getApiClientService().getTokenCredentials(new LocalUserDetail(resourceCredentials.getLocalUserId()));
+	                     
+	                     context.getApiClientService().getClientAndViewerRateLimitStatus(localUser);
+	                     
+	                     
+	                     LocalDate date = FitbitApiService.getValidLocalDateOrNull("2012-06-01");
+	             		Sleep sleep = context.getApiClientService().getClient().getSleep(localUser,
+	             				FitbitUser.CURRENT_AUTHORIZED_USER, date);
+	             		
+	             		
+	             		System.out.println("Your sleep on " + date + ": inBed=" + sleep.getSummary().getTotalTimeInBed() + " asleep=" + sleep.getSummary().getTotalMinutesAsleep());
+	                    logger.info(" no idea what the fuck is doing" );
+	                    
 	                } catch (FitbitAPIException e) {
 	                    logger.error("Unable to finish authorization with Fitbit.", e);
 	                    request.setAttribute("errors", Collections.singletonList(e.getMessage()));
