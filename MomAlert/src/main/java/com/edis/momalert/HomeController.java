@@ -1,5 +1,6 @@
 package com.edis.momalert;
 
+import java.sql.DatabaseMetaData;
 import java.text.DateFormat;
 import java.util.Collections;
 import java.util.Date;
@@ -21,6 +22,8 @@ import org.springframework.web.bind.annotation.RequestMethod;
 
 import com.edis.momalert.form.FitbitForm;
 import com.edis.momalert.form.UserForm;
+import com.edis.momalert.model.Fitbit;
+import com.edis.momalert.model.FitbitPK;
 import com.edis.momalert.model.PCUser;
 import com.fitbit.api.FitbitAPIException;
 import com.fitbit.api.client.FitbitAPIEntityCache;
@@ -42,6 +45,12 @@ import com.fitbit.web.context.RequestContext;
 
 
 
+
+
+
+
+
+import org.hibernate.Query;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
@@ -98,7 +107,7 @@ public class HomeController implements InitializingBean{
     
     
     @RequestMapping(value = "/home", method = RequestMethod.POST)
-	public String home(UserForm myForm) {
+	public String home(UserForm myForm,HttpServletRequest request, HttpServletResponse response) {
 		logger.info("Welcome home! ");
 		
 	    logger.info("mmy name   "+myForm.getName());
@@ -131,9 +140,19 @@ public class HomeController implements InitializingBean{
 		Session session = sessionFactory.openSession();
 		session.beginTransaction();
  
+		PCUser myuser2 = null;
 		
-		session.save(user);
+		try{
+		myuser2 = (PCUser) session.get(PCUser.class, user.getEmail());
+		} catch(Exception e){
+			myuser2 = null;
+		}
+		if(myuser2==null) {
+			logger.info("insert a new user");
+				session.save(user);
  
+		}
+		 request.getSession().setAttribute("myuser",user);
 		session.getTransaction().commit();
 		session.close();
 	    
@@ -159,8 +178,8 @@ public class HomeController implements InitializingBean{
 	        
 		 context.setOurUser(new LocalUserDetail(myForm.getName()));
 		 populate(context, request, response);
-		 
-		 request.getSession().setAttribute("user_name", myForm.getName());
+		 request.getSession().setAttribute("fitbit_username",myForm.getName());
+		
 		 try {
 	            // Redirect to page where user can authorize the application:
 	            return "redirect:" + context.getApiClientService().getResourceOwnerAuthorizationURL(context.getOurUser(), getExampleBaseUrl() + "/completeAuthorization");
@@ -178,10 +197,71 @@ public class HomeController implements InitializingBean{
 	        String tempTokenReceived = request.getParameter(OAUTH_TOKEN);
 	        String tempTokenVerifier = request.getParameter(OAUTH_VERIFIER);
 	        APIResourceCredentials resourceCredentials = context.getApiClientService().getResourceCredentialsByTempToken(tempTokenReceived);
+	        String fitbitUsername = (String) request.getSession().getAttribute("fitbit_username");
+	        PCUser myuser = (PCUser) request.getSession().getAttribute("myuser");
 	        
-	        String userName = (String) request.getSession().getAttribute("user_name");
+	        
+	       
+	       
+	       // com.edis.momalert.model.FitbitPK myfitbitPK = new com.edis.momalert.model.FitbitPK(myuser, fitbitUsername);
+	       
+	        //Fitbit myFitbit = new Fitbit(myfitbitPK);
+	        //myFitbit.setTempTokenReceived(tempTokenReceived);
+	        //myFitbit.setTempTokenVerifier(tempTokenVerifier);
+	        
 
-	        if (resourceCredentials == null) {
+	     
+
+			Session session = sessionFactory.openSession();
+			session.beginTransaction();
+	 
+			
+	        //Query query = session.createQuery("from fitbit where myuser = :myuser and fitbitemail = :fitbitemail");
+	        //query.setParameter("myuser", myuser.getEmail());
+	        //query.setParameter("fitbitemail", fitbitUsername);
+	        
+	        
+	        //List<Fitbit> mylist = query.list();
+			
+			FitbitPK mykey = new FitbitPK(myuser.getEmail(), fitbitUsername);
+			
+			logger.info("getting fitbit from db");
+	        
+			Fitbit myfitbit =null;
+			
+			try{
+			myfitbit = (Fitbit) session.get(Fitbit.class, mykey);
+			
+			}catch (Exception ex){
+				
+			}
+			logger.info("trying to retreive "+myuser.getEmail());
+			//PCUser myuser2 = (PCUser) session.get(PCUser.class, myuser.getEmail());
+			
+			//logger.info("my user "+myuser2.getFacebookId());
+			//session.save(myFitbit);
+			
+			if(myfitbit == null){
+				logger.info(" mew recprd. , will insert a new one");
+				
+				Fitbit myfitbit2 = new Fitbit(mykey);
+				myfitbit2.setTempTokenReceived(tempTokenReceived);
+				myfitbit2.setTempTokenVerifier(tempTokenVerifier);
+				
+				session.save(myfitbit2);
+			}else{
+				logger.info(" will update the existing one");
+				
+				myfitbit.setTempTokenReceived(tempTokenReceived);
+				myfitbit.setTempTokenVerifier(tempTokenVerifier);
+				session.update(myfitbit);
+			}
+	 
+			session.getTransaction().commit();
+			session.close();
+
+			
+	        if (resourceCredentials == null ) {
 	            logger.error("Unrecognized temporary token when attempting to complete authorization: " + tempTokenReceived);
 	            request.setAttribute("errors", "Unrecognized temporary token when attempting to complete authorization: " + tempTokenReceived);
 	        } else {
@@ -193,8 +273,8 @@ public class HomeController implements InitializingBean{
 	                try {
 	                    // Get token credentials for user:
 	                	
-	                	logger.info("user name is "+userName);
-	                	final LocalUserDetail localUser = new LocalUserDetail(userName);
+	                	logger.info("user name is "+fitbitUsername);
+	                	final LocalUserDetail localUser = new LocalUserDetail(fitbitUsername);
 	                     context.getApiClientService().getTokenCredentials(new LocalUserDetail(resourceCredentials.getLocalUserId()));
 	                     
 	                     context.getApiClientService().getClientAndViewerRateLimitStatus(localUser);

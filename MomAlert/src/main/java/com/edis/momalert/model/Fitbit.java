@@ -2,46 +2,22 @@ package com.edis.momalert.model;
 
 import java.io.Serializable;
 
+import org.hibernate.annotations.CascadeType;
+import org.hibernate.annotations.Cascade;
 import javax.persistence.Embeddable;
 import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
 
 @Entity
-public class Fitbit {
-	@Embeddable
-	public class FitbitPK implements Serializable {
-		
-		/**
-		 * 
-		 */
-		private static final long serialVersionUID = -6609391343863898296L;
-		private PCUser user;
-		private String fitbitEmail;
+public class Fitbit implements Serializable {
 
-		public FitbitPK( PCUser user, String fitbitEmail){
-			this.setUser(user);
-			this.setFitbitEmail(fitbitEmail);
-		}
 
-		public PCUser getUser() {
-			return user;
-		}
-
-		public void setUser(PCUser user) {
-			this.user = user;
-		}
-
-		public String getFitbitEmail() {
-			return fitbitEmail;
-		}
-
-		public void setFitbitEmail(String fitbitEmail) {
-			this.fitbitEmail = fitbitEmail;
-		}
-		
-	}
 	@EmbeddedId
 	private FitbitPK fitbitPK;
+	
+	private PCUser myuser;
 	private String tempTokenReceived;
     private String tempTokenVerifier;
     
@@ -63,10 +39,17 @@ public class Fitbit {
 		this.tempTokenVerifier = tempTokenVerifier;
 	}
 
-	public FitbitPK getFitbitPK() {
-		return fitbitPK;
+	@ManyToOne()
+	@Cascade ({CascadeType.SAVE_UPDATE})
+	@JoinColumn(name = "email", insertable = false, updatable= false)
+	public PCUser getPCUser() {
+		return myuser;
 	}
 
+	
+	public FitbitPK getFitbitPK(){
+		return this.fitbitPK;
+	}
 	public void setFitbitPK(FitbitPK fitbitPK) {
 		this.fitbitPK = fitbitPK;
 	} 

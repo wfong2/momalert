@@ -31,6 +31,16 @@
 	<logger name="org.springframework.web">
 		<level value="info" />
 	</logger>
+	
+	<logger name="org.hibernate.SQL">
+	 <level value="trace" />
+	 </logger>
+<!-- Log all JDBC parameters -->
+	<logger name="org.hibernate.type">
+	 <level value="trace" />
+	 </logger>
+
+	
 
 	<!-- Root Logger -->
 	<root>
